@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Atomic Lab | Visibility Fixed</title>
+    <style>
+        :root { --neon: #00f2ff; --bg: #03070a; --panel: #0d151d; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; }
+        
+        #header { height: 50px; background: var(--panel); border-bottom: 2px solid var(--neon); display: flex; align-items: center; justify-content: center; z-index: 20; position: relative; }
+        h1 { margin: 0; font-size: 1.1rem; letter-spacing: 2px; color: var(--neon); text-transform: uppercase; }
+
+        #main-container { display: flex; height: calc(100vh - 50px); width: 100vw; padding: 10px; gap: 10px; }
+
+        /* Left Sidebar */
+        #sidebar { width: 320px; display: flex; flex-direction: column; background: rgba(255,255,255,0.02); border-radius: 10px; padding: 5px; }
+        #table-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; overflow-y: auto; flex: 1; padding-right: 5px; }
+        .card { background: var(--panel); border: 1px solid #222; padding: 8px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; border-radius: 4px; }
+        .card:hover { border-color: var(--neon); background: #162431; }
+        .card.selected { background: var(--neon); color: #000; border-color: #fff; font-weight: bold; }
+        .z { position: absolute; top: 2px; left: 4px; font-size: 9px; opacity: 0.7; }
+        .sym { font-size: 1.1rem; display: block; }
+
+        /* Right Visualizer */
+        #visualizer-container { flex: 1; position: relative; background: #000; border-radius: 10px; border: 1px solid #1a1a1a; display: flex; flex-direction: column; }
+        #canvas-wrap { flex: 1; position: relative; width: 100%; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        /* Info Panel Overlay */
+        #info-overlay { 
+            position: absolute; top: 15px; left: 15px; width: 280px; 
+            background: rgba(3, 7, 10, 0.9); border-left: 4px solid var(--neon); 
+            padding: 15px; pointer-events: none; z-index: 10; border-radius: 0 8px 8px 0;
+        }
+        .data-row { margin-bottom: 8px; }
+        .tag { color: #888; font-size: 9px; text-transform: uppercase; display: block; }
+        .val { color: var(--neon); font-family: 'Consolas', monospace; font-size: 0.95rem; }
+
+        #controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 10; }
+        .btn { background: #000; border: 1px solid var(--neon); color: var(--neon); padding: 8px 16px; cursor: pointer; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; }
+        .btn:hover { background: var(--neon); color: #000; }
+    </style>
+</head>
+<body>
+
+<div id="header"><h1>Atomic System & Subshell Visualizer</h1></div>
+
+<div id="main-container">
+    <div id="sidebar">
+        <div id="table-grid"></div>
+    </div>
+
+    <div id="visualizer-container">
+        <div id="info-overlay">
+            <h2 id="disp-name" style="margin:0 0 10px 0; color:#fff; font-size:1.4rem">Select Element</h2>
+            <div class="data-row"><span class="tag">IUPAC Mass</span><span class="val" id="disp-mass">-</span></div>
+            <div class="data-row"><span class="tag">Valency</span><span class="val" id="disp-val">-</span></div>
+            <div class="data-row"><span class="tag">Bohr Configuration</span><span class="val" id="disp-bohr">-</span></div>
+            <div class="data-row"><span class="tag">Quantum Subshells</span><span class="val" id="disp-quant">-</span></div>
+        </div>
+
+        <div id="canvas-wrap">
+            <canvas id="atomCanvas"></canvas>
+        </div>
+
+        <div id="controls">
+            <button class="btn" onclick="togglePause()" id="pBtn">Pause</button>
+            <button class="btn" onclick="combine()" style="border-color:#7000ff; color:#7000ff">Combine</button>
+            <button class="btn" onclick="resetAll()" style="color:#ff4444; border-color:#ff4444">Reset</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const elements = [
+    {z:1, s:'H', n:'Hydrogen', m:1.008, v:1, q:'1s¹', b:[1]},
+    {z:2, s:'He', n:'Helium', m:4.002, v:0, q:'1s²', b:[2]},
+    {z:3, s:'Li', n:'Lithium', m:6.941, v:1, q:'1s² 2s¹', b:[2,1]},
+    {z:4, s:'Be', n:'Beryllium', m:9.012, v:2, q:'1s² 2s²', b:[2,2]},
+    {z:5, s:'B', n:'Boron', m:10.81, v:3, q:'1s² 2s² 2p¹', b:[2,3]},
+    {z:6, s:'C', n:'Carbon', m:12.01, v:4, q:'1s² 2s² 2p²', b:[2,4]},
+    {z:7, s:'N', n:'Nitrogen', m:14.00, v:3, q:'1s² 2s² 2p³', b:[2,5]},
+    {z:8, s:'O', n:'Oxygen', m:15.99, v:2, q:'1s² 2s² 2p⁴', b:[2,6]},
+    {z:9, s:'F', n:'Fluorine', m:18.99, v:1, q:'1s² 2s² 2p⁵', b:[2,7]},
+    {z:10, s:'Ne', n:'Neon', m:20.17, v:0, q:'1s² 2s² 2p⁶', b:[2,8]},
+    {z:11, s:'Na', n:'Sodium', m:22.98, v:1, q:'[Ne] 3s¹', b:[2,8,1]},
+    {z:12, s:'Mg', n:'Magnesium', m:24.30, v:2, q:'[Ne] 3s²', b:[2,8,2]},
+    {z:13, s:'Al', n:'Aluminium', m:26.98, v:3, q:'[Ne] 3s² 3p¹', b:[2,8,3]},
+    {z:14, s:'Si', n:'Silicon', m:28.08, v:4, q:'[Ne] 3s² 3p²', b:[2,8,4]},
+    {z:15, s:'P', n:'Phosphorus', m:30.97, v:3, q:'[Ne] 3s² 3p³', b:[2,8,5]},
+    {z:16, s:'S', n:'Sulfur', m:32.06, v:2, q:'[Ne] 3s² 3p⁴', b:[2,8,6]},
+    {z:17, s:'Cl', n:'Chlorine', m:35.45, v:1, q:'[Ne] 3s² 3p⁵', b:[2,8,7]},
+    {z:18, s:'Ar', n:'Argon', m:39.94, v:0, q:'[Ne] 3s² 3p⁶', b:[2,8,8]},
+    {z:19, s:'K', n:'Potassium', m:39.09, v:1, q:'[Ar] 4s¹', b:[2,8,8,1]},
+    {z:20, s:'Ca', n:'Calcium', m:40.07, v:2, q:'[Ar] 4s²', b:[2,8,8,2]},
+    {z:21, s:'Sc', n:'Scandium', m:44.95, v:3, q:'[Ar] 3d¹ 4s²', b:[2,8,9,2]},
+    {z:22, s:'Ti', n:'Titanium', m:47.86, v:4, q:'[Ar] 3d² 4s²', b:[2,8,10,2]},
+    {z:23, s:'V', n:'Vanadium', m:50.94, v:5, q:'[Ar] 3d³ 4s²', b:[2,8,11,2]},
+    {z:24, s:'Cr', n:'Chromium', m:51.99, v:3, q:'[Ar] 3d⁵ 4s¹', b:[2,8,13,1]},
+    {z:25, s:'Mn', n:'Manganese', m:54.93, v:2, q:'[Ar] 3d⁵ 4s²', b:[2,8,13,2]},
+    {z:26, s:'Fe', n:'Iron', m:55.84, v:3, q:'[Ar] 3d⁶ 4s²', b:[2,8,14,2]},
+    {z:27, s:'Co', n:'Cobalt', m:58.93, v:2, q:'[Ar] 3d⁷ 4s²', b:[2,8,15,2]},
+    {z:28, s:'Ni', n:'Nickel', m:58.69, v:2, q:'[Ar] 3d⁸ 4s²', b:[2,8,16,2]},
+    {z:29, s:'Cu', n:'Copper', m:63.54, v:2, q:'[Ar] 3d¹⁰ 4s¹', b:[2,8,18,1]},
+    {z:30, s:'Zn', n:'Zinc', m:65.38, v:2, q:'[Ar] 3d¹⁰ 4s²', b:[2,8,18,2]},
+    {z:47, s:'Ag', n:'Silver', m:107.8, v:1, q:'[Kr] 4d¹⁰ 5s¹', b:[2,8,18,18,1]},
+    {z:79, s:'Au', n:'Gold', m:196.9, v:3, q:'[Xe] 4f¹⁴ 5d¹⁰ 6s¹', b:[2,8,18,32,18,1]},
+    {z:80, s:'Hg', n:'Mercury', m:200.5, v:2, q:'[Xe] 4f¹⁴ 5d¹⁰ 6s²', b:[2,8,18,32,18,2]}
+];
+
+const canvas = document.getElementById('atomCanvas');
+const ctx = canvas.getContext('2d');
+let selected = [];
+let isPaused = false;
+let angle = 0;
+
+function initTable() {
+    const grid = document.getElementById('table-grid');
+    elements.forEach(el => {
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = `<span class="z">${el.z}</span><span class="sym">${el.s}</span>`;
+        d.onclick = () => {
+            if(selected.includes(el)) {
+                selected = selected.filter(x => x !== el);
+                d.classList.remove('selected');
+            } else if(selected.length < 2) {
+                selected.push(el);
+                d.classList.add('selected');
+            }
+            updateUI();
+        };
+        grid.appendChild(d);
+    });
+}
+
+function updateUI() {
+    if(selected.length === 1) {
+        const e = selected[0];
+        document.getElementById('disp-name').innerText = e.n;
+        document.getElementById('disp-mass').innerText = e.m + " u";
+        document.getElementById('disp-val').innerText = e.v;
+        document.getElementById('disp-bohr').innerText = e.b.join(', ');
+        document.getElementById('disp-quant').innerText = e.q;
+    } else if(selected.length === 0) {
+        document.getElementById('disp-name').innerText = "Select Element";
+        ["disp-mass", "disp-val", "disp-bohr", "disp-quant"].forEach(id => document.getElementById(id).innerText = "-");
+    }
+}
+
+function drawAtom(el, x, y, scale) {
+    ctx.beginPath(); ctx.arc(x, y, 20*scale, 0, Math.PI*2);
+    ctx.fillStyle = "#ff3b3b"; ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.font = `bold ${14*scale}px Arial`; ctx.textAlign = "center";
+    ctx.fillText(el.s, x, y + 5*scale);
+
+    el.b.forEach((count, i) => {
+        const r = (50 + i * 35) * scale;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+        ctx.strokeStyle = "rgba(0, 242, 255, 0.15)"; ctx.stroke();
+        for(let j=0; j<count; j++) {
+            const a = (j * Math.PI*2/count) + (angle * (1/(i+1)));
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(a)*r, y + Math.sin(a)*r, 4*scale, 0, Math.PI*2);
+            ctx.fillStyle = "#00f2ff"; ctx.fill();
+        }
+    });
+}
+
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+function combine() {
+    if(selected.length !== 2) return;
+    const [e1, e2] = selected;
+    if(e1.v === 0 || e2.v === 0) { alert("Noble gas: No bond possible."); return; }
+    const d = gcd(e1.v, e2.v);
+    const n1 = e2.v/d, n2 = e1.v/d;
+    const formula = `${e1.s}${n1===1?'':n1}${e2.s}${n2===1?'':n2}`;
+    document.getElementById('disp-name').innerText = formula;
+    document.getElementById('disp-val').innerText = "Result: " + formula;
+}
+
+function resetAll() {
+    selected = [];
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+    updateUI();
+}
+
+function togglePause() { isPaused = !isPaused; document.getElementById('pBtn').innerText = isPaused ? "Resume" : "Pause"; }
+
+function animate() {
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    if(!isPaused) angle += 0.015;
+    if(selected.length === 1) drawAtom(selected[0], canvas.width/2, canvas.height/2, 1);
+    else if(selected.length === 2) {
+        drawAtom(selected[0], canvas.width/2 - 140, canvas.height/2, 0.65);
+        drawAtom(selected[1], canvas.width/2 + 140, canvas.height/2, 0.65);
+    }
+    requestAnimationFrame(animate);
+}
+
+function resize() {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+}
+
+window.onload = () => { initTable(); resize(); animate(); };
+window.onresize = resize;
+</script>
+</body>
+</html>
