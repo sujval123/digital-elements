@@ -262,16 +262,44 @@ function drawBenzeneRing() {
 function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
 
 function combine() {
-    if(selected.length !== 2) return;
-    const [e1, e2] = selected;
-    if(e1.v === 0 || e2.v === 0) { alert("Noble gas: No bond."); return; }
-    const d = gcd(e1.v, e2.v);
-    const n1 = e2.v/d, n2 = e1.v/d;
-    const formula = `${e1.s}${n1===1?'':n1}${e2.s}${n2===1?'':n2}`;
-    document.getElementById('disp-name').innerText = formula;
-    document.getElementById('disp-val').innerText = "Ionic/Covalent Mix";
-}
+    if (selected.length !== 2) {
+        alert("Select two items (e.g., Hydrogen + Sulfate) to combine.");
+        return;
+    }
 
+    const [e1, e2] = selected;
+
+    // Check if either is a Noble Gas
+    if (e1.v === 0 || e2.v === 0) {
+        alert("Noble gas: No bond possible.");
+        return;
+    }
+
+    // Calculate subscripts using Criss-Cross Method (Valency swap)
+    const val1 = e1.v;
+    const val2 = e2.v;
+    const common = gcd(val1, val2);
+    
+    const num1 = val2 / common;
+    const num2 = val1 / common;
+
+    // Formatting Logic for Radicals (Adding parentheses if subscript > 1)
+    const formatName = (item, count) => {
+        if (count === 1) return item.s;
+        // If it's a radical (multi-letter) and count > 1, add parentheses
+        if (item.s.length > 1 && !item.z) return `(${item.s})${count}`;
+        return `${item.s}${count}`;
+    };
+
+    const formula = formatName(e1, num1) + formatName(e2, num2);
+
+    // Update the UI with the final molecular formula
+    document.getElementById('disp-name').innerText = formula;
+    document.getElementById('disp-val').innerText = `Compound: ${e1.n} ${e2.n}`;
+    document.getElementById('disp-mass').innerText = "Molecular Formula Created";
+    document.getElementById('disp-bohr').innerText = "Bonding: Chemical Attraction";
+    document.getElementById('disp-quant').innerText = `Valency Used: ${val1} & ${val2}`;
+}
 function resetAll() {
     selected = [];
     isBenzeneActive = false;
