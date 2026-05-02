@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Atomic Lab | Visibility Fixed</title>
+    <title>Atomic Lab | JEE & Organic Edition</title>
     <meta name="viewport" content="width=1024, initial-scale=0.1">
     <style>
-        :root { --neon: #00f2ff; --bg: #03070a; --panel: #0d151d; }
+        :root { --neon: #00f2ff; --bg: #03070a; --panel: #0d151d; --purple: #a855f7; }
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; }
         
@@ -14,7 +14,6 @@
 
         #main-container { display: flex; height: calc(100vh - 50px); width: 100vw; padding: 10px; gap: 10px; }
 
-        /* Left Sidebar */
         #sidebar { width: 320px; display: flex; flex-direction: column; background: rgba(255,255,255,0.02); border-radius: 10px; padding: 5px; }
         #table-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; overflow-y: auto; flex: 1; padding-right: 5px; }
         .card { background: var(--panel); border: 1px solid #222; padding: 8px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; border-radius: 4px; }
@@ -23,20 +22,18 @@
         .z { position: absolute; top: 2px; left: 4px; font-size: 9px; opacity: 0.7; }
         .sym { font-size: 1.1rem; display: block; }
 
-        /* Right Visualizer */
         #visualizer-container { flex: 1; position: relative; background: #000; border-radius: 10px; border: 1px solid #1a1a1a; display: flex; flex-direction: column; }
         #canvas-wrap { flex: 1; position: relative; width: 100%; }
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        /* Info Panel Overlay */
         #info-overlay { 
-            position: absolute; top: 15px; left: 15px; width: 280px; 
+            position: absolute; top: 15px; left: 15px; width: 300px; 
             background: rgba(3, 7, 10, 0.9); border-left: 4px solid var(--neon); 
             padding: 15px; pointer-events: none; z-index: 10; border-radius: 0 8px 8px 0;
         }
         .data-row { margin-bottom: 8px; }
         .tag { color: #888; font-size: 9px; text-transform: uppercase; display: block; }
-        .val { color: var(--neon); font-family: 'Consolas', monospace; font-size: 0.95rem; }
+        .val { color: var(--neon); font-family: 'Consolas', monospace; font-size: 0.9rem; line-height: 1.2; display: block; }
 
         #controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 10; }
         .btn { background: #000; border: 1px solid var(--neon); color: var(--neon); padding: 8px 16px; cursor: pointer; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; }
@@ -55,10 +52,10 @@
     <div id="visualizer-container">
         <div id="info-overlay">
             <h2 id="disp-name" style="margin:0 0 10px 0; color:#fff; font-size:1.4rem">Select Element</h2>
-            <div class="data-row"><span class="tag">IUPAC Mass</span><span class="val" id="disp-mass">-</span></div>
-            <div class="data-row"><span class="tag">Valency</span><span class="val" id="disp-val">-</span></div>
-            <div class="data-row"><span class="tag">Bohr Configuration</span><span class="val" id="disp-bohr">-</span></div>
-            <div class="data-row"><span class="tag">Quantum Subshells</span><span class="val" id="disp-quant">-</span></div>
+            <div class="data-row"><span class="tag">Mass / Formula</span><span class="val" id="disp-mass">-</span></div>
+            <div class="data-row"><span class="tag">Valency / Bonding</span><span class="val" id="disp-val">-</span></div>
+            <div class="data-row"><span class="tag">Shell Config</span><span class="val" id="disp-bohr">-</span></div>
+            <div class="data-row"><span class="tag">Quantum Subshells (s,p,d,f)</span><span class="val" id="disp-quant">-</span></div>
         </div>
 
         <div id="canvas-wrap">
@@ -95,19 +92,21 @@ const elements = [
     {z:18, s:'Ar', n:'Argon', m:39.94, v:0, q:'[Ne] 3s² 3p⁶', b:[2,8,8]},
     {z:19, s:'K', n:'Potassium', m:39.09, v:1, q:'[Ar] 4s¹', b:[2,8,8,1]},
     {z:20, s:'Ca', n:'Calcium', m:40.07, v:2, q:'[Ar] 4s²', b:[2,8,8,2]},
-    {z:21, s:'Sc', n:'Scandium', m:44.95, v:3, q:'[Ar] 3d¹ 4s²', b:[2,8,9,2]},
-    {z:22, s:'Ti', n:'Titanium', m:47.86, v:4, q:'[Ar] 3d² 4s²', b:[2,8,10,2]},
-    {z:23, s:'V', n:'Vanadium', m:50.94, v:5, q:'[Ar] 3d³ 4s²', b:[2,8,11,2]},
-    {z:24, s:'Cr', n:'Chromium', m:51.99, v:3, q:'[Ar] 3d⁵ 4s¹', b:[2,8,13,1]},
-    {z:25, s:'Mn', n:'Manganese', m:54.93, v:2, q:'[Ar] 3d⁵ 4s²', b:[2,8,13,2]},
-    {z:26, s:'Fe', n:'Iron', m:55.84, v:3, q:'[Ar] 3d⁶ 4s²', b:[2,8,14,2]},
-    {z:27, s:'Co', n:'Cobalt', m:58.93, v:2, q:'[Ar] 3d⁷ 4s²', b:[2,8,15,2]},
-    {z:28, s:'Ni', n:'Nickel', m:58.69, v:2, q:'[Ar] 3d⁸ 4s²', b:[2,8,16,2]},
-    {z:29, s:'Cu', n:'Copper', m:63.54, v:2, q:'[Ar] 3d¹⁰ 4s¹', b:[2,8,18,1]},
-    {z:30, s:'Zn', n:'Zinc', m:65.38, v:2, q:'[Ar] 3d¹⁰ 4s²', b:[2,8,18,2]},
-    {z:47, s:'Ag', n:'Silver', m:107.8, v:1, q:'[Kr] 4d¹⁰ 5s¹', b:[2,8,18,18,1]},
+    {z:26, s:'Fe', n:'Iron', m:55.84, v:3, q:'1s² 2s² 2p⁶ 3s² 3p⁶ 4s² 3d⁶', b:[2,8,14,2]},
+    {z:29, s:'Cu', n:'Copper', m:63.54, v:2, q:'1s² 2s² 2p⁶ 3s² 3p⁶ 4s¹ 3d¹⁰', b:[2,8,18,1]},
+    {z:30, s:'Zn', n:'Zinc', m:65.38, v:2, q:'1s² 2s² 2p⁶ 3s² 3p⁶ 4s² 3d¹⁰', b:[2,8,18,2]},
+    {z:47, s:'Ag', n:'Silver', m:107.8, v:1, q:'1s² 2s² 2p⁶ 3s² 3p⁶ 4s² 3d¹⁰ 4p⁶ 5s¹ 4d¹⁰', b:[2,8,18,18,1]},
     {z:79, s:'Au', n:'Gold', m:196.9, v:3, q:'[Xe] 4f¹⁴ 5d¹⁰ 6s¹', b:[2,8,18,32,18,1]},
     {z:80, s:'Hg', n:'Mercury', m:200.5, v:2, q:'[Xe] 4f¹⁴ 5d¹⁰ 6s²', b:[2,8,18,32,18,2]}
+];
+
+const radicals = [
+    {s:'OH', n:'Hydroxide', v:1, color:'#ff00ff'},
+    {s:'SO4', n:'Sulfate', v:2, color:'#ffff00'},
+    {s:'NO3', n:'Nitrate', v:1, color:'#00ff00'},
+    {s:'CO3', n:'Carbonate', v:2, color:'#ffa500'},
+    {s:'PO4', n:'Phosphate', v:3, color:'#0000ff'},
+    {s:'NH4', n:'Ammonium', v:1, color:'#ffffff'}
 ];
 
 const canvas = document.getElementById('atomCanvas');
@@ -115,14 +114,20 @@ const ctx = canvas.getContext('2d');
 let selected = [];
 let isPaused = false;
 let angle = 0;
+let carbonCount = 0;
+let isBenzeneActive = false;
 
 function initTable() {
     const grid = document.getElementById('table-grid');
+    grid.innerHTML = ""; // Clear grid
+    
+    // Elements
     elements.forEach(el => {
         const d = document.createElement('div');
         d.className = 'card';
         d.innerHTML = `<span class="z">${el.z}</span><span class="sym">${el.s}</span>`;
         d.onclick = () => {
+            isBenzeneActive = false;
             if(selected.includes(el)) {
                 selected = selected.filter(x => x !== el);
                 d.classList.remove('selected');
@@ -134,23 +139,88 @@ function initTable() {
         };
         grid.appendChild(d);
     });
+
+    // Radicals
+    const rLabel = document.createElement('div');
+    rLabel.innerHTML = "JEE Radicals";
+    rLabel.style = "grid-column: span 3; color: var(--purple); font-size: 11px; margin: 15px 0 5px 0; font-weight: bold; border-top: 1px solid #333; padding-top: 10px;";
+    grid.appendChild(rLabel);
+
+    radicals.forEach(r => {
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = `<span class="sym" style="color:${r.color}">${r.s}</span>`;
+        d.onclick = () => {
+            isBenzeneActive = false;
+            selected = [r];
+            updateUI();
+        };
+        grid.appendChild(d);
+    });
+
+    // Organic Section
+    const oLabel = document.createElement('div');
+    oLabel.innerHTML = "Organic Series";
+    oLabel.style = "grid-column: span 3; color: var(--neon); font-size: 11px; margin: 15px 0 5px 0; font-weight: bold; border-top: 1px solid #333; padding-top: 10px;";
+    grid.appendChild(oLabel);
+
+    ['Alkane', 'Alkene', 'Alkyne'].forEach(type => {
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = `<span class="sym" style="font-size:0.8rem">${type}</span>`;
+        d.onclick = () => {
+            let count = prompt(`Number of Carbons for ${type} (1-8):`, "1");
+            carbonCount = parseInt(count);
+            if(carbonCount > 0 && carbonCount <= 8) buildOrganic(type.toLowerCase());
+            else alert("Enter 1-8 carbons");
+        };
+        grid.appendChild(d);
+    });
 }
 
 function updateUI() {
     if(selected.length === 1) {
         const e = selected[0];
         document.getElementById('disp-name').innerText = e.n;
-        document.getElementById('disp-mass').innerText = e.m + " u";
+        document.getElementById('disp-mass').innerText = e.m ? e.m + " u" : "N/A";
         document.getElementById('disp-val').innerText = e.v;
-        document.getElementById('disp-bohr').innerText = e.b.join(', ');
-        document.getElementById('disp-quant').innerText = e.q;
-    } else if(selected.length === 0) {
+        document.getElementById('disp-bohr').innerText = e.b ? e.b.join(', ') : "Polyatomic";
+        document.getElementById('disp-quant').innerText = e.q || "N/A";
+    } else if(selected.length === 0 && !isBenzeneActive) {
         document.getElementById('disp-name').innerText = "Select Element";
         ["disp-mass", "disp-val", "disp-bohr", "disp-quant"].forEach(id => document.getElementById(id).innerText = "-");
     }
 }
 
+function buildOrganic(type) {
+    selected = []; // Clear atom selection
+    const pre = ["", "Meth", "Eth", "Prop", "But", "Pent", "Hex", "Hept", "Oct"];
+    let h = 0, suffix = "", bond = "";
+
+    if (type === 'alkane') { h = (2*carbonCount)+2; suffix = "ane"; bond = "Single (C-C)"; }
+    else if (type === 'alkene') { 
+        if(carbonCount < 2) { alert("Start from Ethene (C2)"); return; }
+        h = (2*carbonCount); suffix = "ene"; bond = "Double (C=C)"; 
+    }
+    else if (type === 'alkyne') { 
+        if(carbonCount < 2) { alert("Start from Ethyne (C2)"); return; }
+        h = (2*carbonCount)-2; suffix = "yne"; bond = "Triple (C≡C)"; 
+    }
+
+    const name = pre[carbonCount] + suffix;
+    const formula = `C${carbonCount}${h > 0 ? 'H'+h : ''}`;
+    
+    document.getElementById('disp-name').innerText = name;
+    document.getElementById('disp-mass').innerText = "Formula: " + formula;
+    document.getElementById('disp-val').innerText = bond;
+    document.getElementById('disp-bohr').innerText = "Organic Structure";
+    document.getElementById('disp-quant').innerText = "Hybridization Involved";
+
+    isBenzeneActive = (carbonCount === 6 && type === 'alkene');
+}
+
 function drawAtom(el, x, y, scale) {
+    if(!el.b) return; // Skip if no Bohr data
     ctx.beginPath(); ctx.arc(x, y, 20*scale, 0, Math.PI*2);
     ctx.fillStyle = "#ff3b3b"; ctx.fill();
     ctx.fillStyle = "#fff"; ctx.font = `bold ${14*scale}px Arial`; ctx.textAlign = "center";
@@ -169,21 +239,35 @@ function drawAtom(el, x, y, scale) {
     });
 }
 
+function drawBenzeneRing() {
+    const x = canvas.width/2, y = canvas.height/2, r = 75;
+    ctx.strokeStyle = "#00f2ff"; ctx.lineWidth = 3;
+    ctx.beginPath();
+    for(let i=0; i<6; i++) {
+        const a = i * Math.PI * 2 / 6;
+        ctx.lineTo(x + r * Math.cos(a), y + r * Math.sin(a));
+    }
+    ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, r * 0.55, 0, Math.PI * 2);
+    ctx.setLineDash([8, 6]); ctx.stroke(); ctx.setLineDash([]);
+}
+
 function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
 
 function combine() {
     if(selected.length !== 2) return;
     const [e1, e2] = selected;
-    if(e1.v === 0 || e2.v === 0) { alert("Noble gas: No bond possible."); return; }
+    if(e1.v === 0 || e2.v === 0) { alert("Noble gas: No bond."); return; }
     const d = gcd(e1.v, e2.v);
     const n1 = e2.v/d, n2 = e1.v/d;
     const formula = `${e1.s}${n1===1?'':n1}${e2.s}${n2===1?'':n2}`;
     document.getElementById('disp-name').innerText = formula;
-    document.getElementById('disp-val').innerText = "Result: " + formula;
+    document.getElementById('disp-val').innerText = "Ionic/Covalent Mix";
 }
 
 function resetAll() {
     selected = [];
+    isBenzeneActive = false;
     document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
     updateUI();
 }
@@ -193,8 +277,12 @@ function togglePause() { isPaused = !isPaused; document.getElementById('pBtn').i
 function animate() {
     ctx.clearRect(0,0,canvas.width, canvas.height);
     if(!isPaused) angle += 0.015;
-    if(selected.length === 1) drawAtom(selected[0], canvas.width/2, canvas.height/2, 1);
-    else if(selected.length === 2) {
+    
+    if(isBenzeneActive) {
+        drawBenzeneRing();
+    } else if(selected.length === 1) {
+        drawAtom(selected[0], canvas.width/2, canvas.height/2, 1);
+    } else if(selected.length === 2) {
         drawAtom(selected[0], canvas.width/2 - 140, canvas.height/2, 0.65);
         drawAtom(selected[1], canvas.width/2 + 140, canvas.height/2, 0.65);
     }
